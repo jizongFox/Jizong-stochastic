@@ -206,4 +206,3 @@ def dump_acc_record(acc,net,use_cuda,epoch,args):
     if not os.path.isdir(resume_to):
         os.mkdir(resume_to)
     torch.save(state, './'+resume_to+'/ckpt.t7')
-

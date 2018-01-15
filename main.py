@@ -74,13 +74,17 @@ if __name__=='__main__':
     parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
     parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
     parser.add_argument('--resume_from',default='checkpoint',type=str,help='resume from which checkpoint')
-    parser.add_argument('--resume_to',default='checkpoint',type=str,help='resume to which dossier')
+    parser.add_argument('--resume_to',default='checkpoint',type=str,help='resume to which directory')
     parser.add_argument('--netName',default='VGG',type=str,help='choose the net')
-    parser.add_argument('--stochastic_loss',action='store_true',help='Enable stochastic node')
+    parser.add_argument('--loss_function',default='cross_entropy',help='change to different loss functions')
+    parser.add_argument('--correct_reward', default=1, type=float, help='correct_reward')
+    parser.add_argument('--incorrect_penalty', default=0, type=float, help='incorrect_penalty')
+    parser.add_argument('--normalize', action='store_true', help='normalize the rewards')
+    parser.add_argument('--epochs_to_train',default=300,type=int)
     args = parser.parse_args()
 
     use_cuda = torch.cuda.is_available()
-    trainloader, testloader, _ = transform_dataset(batch_size=128)
+    trainloader, testloader, _ = transform_dataset(batch_size=400)
 
     # Model
     storedNet, trainList = _initilization_(args,use_cuda)
@@ -90,9 +94,8 @@ if __name__=='__main__':
     optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 
     # Training
-
-    for epoch in range(start_epoch, start_epoch+150):
+    for epoch in range(start_epoch, start_epoch+args.epochs_to_train):
         train(epoch)
         test(epoch)
         if epoch %3 ==0:
-            dump_record()
+            dump_record(train_accuracy_list,test_accuracy_list,args)
