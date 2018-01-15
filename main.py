@@ -1,0 +1,98 @@
+#coding=utf-8
+'''Train CIFAR10 with PyTorch.'''
+import torch.nn as nn
+import torch.optim as optim,torch
+import os
+import argparse
+from utils import progress_bar, transform_dataset,_initilization_,dump_acc_record
+from torch.autograd import Variable
+
+def train(epoch):
+    print('\nEpoch: %d' % epoch)
+    net.train()
+    train_loss = 0
+    correct = 0
+    total = 0
+    for batch_idx, (inputs, targets) in enumerate(trainloader):
+        if use_cuda:
+            inputs, targets = inputs.cuda(), targets.cuda()
+        optimizer.zero_grad()
+        inputs, targets = Variable(inputs), Variable(targets)
+        outputs = net(inputs)
+        loss = criterion(outputs, targets)
+        loss.backward()
+        optimizer.step()
+
+        train_loss += loss.data[0]
+        _, predicted = torch.max(outputs.data, 1)
+        total += targets.size(0)
+        correct += predicted.eq(targets.data).cpu().sum()
+
+        progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+                     % (train_loss / (batch_idx + 1), 100. * correct / total, correct, total))
+    train_accuracy_list[epoch] = 100. * correct / total
+def test(epoch):
+    global best_acc
+    net.eval()
+    test_loss = 0
+    correct = 0
+    total = 0
+    for batch_idx, (inputs, targets) in enumerate(testloader):
+        if use_cuda:
+            inputs, targets = inputs.cuda(), targets.cuda()
+        inputs, targets = Variable(inputs, volatile=True), Variable(targets)
+        outputs = net(inputs)
+        loss = criterion(outputs, targets)
+
+        test_loss += loss.data[0]
+        _, predicted = torch.max(outputs.data, 1)
+        total += targets.size(0)
+        correct += predicted.eq(targets.data).cpu().sum()
+
+        progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+                     % (test_loss / (batch_idx + 1), 100. * correct / total, correct, total))
+
+    test_accuracy_list[epoch] = 100. * correct / total
+    acc = 100. * correct / total
+    if acc > best_acc:
+        dump_acc_record(acc, net, use_cuda, epoch, args)
+def dump_record(train_accuracy_list,test_accuracy_list,args):
+    print('saving record')
+    state ={'train':train_accuracy_list,
+        'test':test_accuracy_list
+        }
+    if not os.path.isdir(args.resume_to):
+        os.mkdir(args.resume_to)
+    try:
+        torch.save(state, './'+args.resume_to+'/record.t7')
+    except Exception as e:
+        print(e)
+
+if __name__=='__main__':
+
+    parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
+    parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
+    parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
+    parser.add_argument('--resume_from',default='checkpoint',type=str,help='resume from which checkpoint')
+    parser.add_argument('--resume_to',default='checkpoint',type=str,help='resume to which dossier')
+    parser.add_argument('--netName',default='VGG',type=str,help='choose the net')
+    parser.add_argument('--stochastic_loss',action='store_true',help='Enable stochastic node')
+    args = parser.parse_args()
+
+    use_cuda = torch.cuda.is_available()
+    trainloader, testloader, _ = transform_dataset(batch_size=128)
+
+    # Model
+    storedNet, trainList = _initilization_(args,use_cuda)
+    (net, best_acc, start_epoch), (train_accuracy_list, test_accuracy_list) = storedNet, trainList
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
+
+    # Training
+
+    for epoch in range(start_epoch, start_epoch+150):
+        train(epoch)
+        test(epoch)
+        if epoch %3 ==0:
+            dump_record()
