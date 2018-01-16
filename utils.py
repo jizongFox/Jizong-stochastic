@@ -160,22 +160,28 @@ def load_resume(_from):
     checkpoint = torch.load('./'+_from+'/ckpt.t7')
     net = checkpoint['net']
     best_acc = checkpoint['acc']
-    start_epoch = checkpoint['epoch']
+    start_epoch = checkpoint['epoch']+1
     _list = torch.load('./'+_from+'/record.t7')
     train_accuracy_list = _list['train']
     test_accuracy_list = _list['test']
-    learning_rate_list=_list['learning']
+    try:
+        learning_rate_list=_list['learning']
+    except:
+        learning_rate_list={}
     keystoDelete = [x for x in train_accuracy_list.keys() if x > start_epoch]
     for k in keystoDelete:
         train_accuracy_list.pop(k)
         test_accuracy_list.pop(k)
-        learning_rate_list.pop(k)
+        try:
+            learning_rate_list.pop(k)
+        except:
+            pass
     return (net, best_acc,start_epoch),(train_accuracy_list,test_accuracy_list,learning_rate_list)
 
 def _initilization_(args,use_cuda):
     if args.resume:
         storedNet, trainList=load_resume(_from=args.resume_from)
-        (net, best_acc, start_epoch), (train_accuracy_list, test_accuracy_list) = storedNet, trainList
+        (net, best_acc, start_epoch), (train_accuracy_list, test_accuracy_list,learning_rate_list) = storedNet, trainList
         print('best_train_acc:',train_accuracy_list[start_epoch-1],'   best_test_acc:',best_acc,'   ','start_epoch:',start_epoch)
     else:
         print('==> Building model..'+ args.netName)
@@ -217,7 +223,7 @@ def dump_acc_record(acc,net,use_cuda,epoch,args):
         print(e)
 
 def dump_record(train_accuracy_list,test_accuracy_list,learning_rate_list,args):
-    print('saving accuracy history')
+    # print('saving accuracy history')
     state ={'train':train_accuracy_list,
         'test':test_accuracy_list,
             'learning':learning_rate_list

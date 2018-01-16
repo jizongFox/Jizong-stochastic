@@ -32,6 +32,7 @@ def train(epoch):
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
                      % (train_loss / (batch_idx + 1), 100. * correct / total, correct, total))
     train_accuracy_list[epoch] = 100. * correct / total
+    learning_rate_list[epoch] = args.lr
 def test(epoch):
     global best_acc
     net.eval()
@@ -57,6 +58,7 @@ def test(epoch):
     acc = 100. * correct / total
     if acc > best_acc:
         dump_acc_record(acc, net, use_cuda, epoch, args)
+        dump_record(train_accuracy_list, test_accuracy_list, learning_rate_list, args)
 
 if __name__=='__main__':
 
