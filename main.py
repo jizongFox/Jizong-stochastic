@@ -89,5 +89,4 @@ if __name__=='__main__':
     for epoch in range(start_epoch, start_epoch+args.epochs_to_train):
         train(epoch)
         test(epoch)
-        if epoch %3 ==0:
-            dump_record(train_accuracy_list,test_accuracy_list,learning_rate_list,args)
+        dump_record(train_accuracy_list,test_accuracy_list,learning_rate_list,args)
