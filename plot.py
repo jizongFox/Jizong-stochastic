@@ -34,7 +34,6 @@ ax1.plot(epochs,train_score)
 ax1.set_ylabel('Accuracy %')
 ax1.plot(epochs,test_score)
 ax1.legend(['train','test'],loc='lower left', bbox_to_anchor=(0.15,0.75),ncol=3,fancybox=True,shadow=True)
-# print(np.unique(np.log10(learning_score)))
 ax1.axvline(maxrecord_index,alpha=0.2,drawstyle='steps-mid',color='r',linewidth=1)
 ax1.axhline(maxrecord,alpha=0.2,drawstyle='steps-mid',color='r',linewidth=1)
 ax2 = ax1.twinx()  # this is the important function
