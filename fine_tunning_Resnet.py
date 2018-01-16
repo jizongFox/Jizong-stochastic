@@ -17,8 +17,13 @@ python main.py --lr 0.001 --resume --resume_from conventional_scheme_ResNet --re
 '''
 os.system(cmd3)
 
-cmd4 ='''
-python main.py --lr 0.0001 --resume --resume_from conventional_scheme_ResNet --resume_to fine-tunning_ResNet --loss_function stochastic --normalize --epochs_to_train 10000
+cmd4 = '''
+python main.py --lr 0.0001 --resume --resume_from conventional_scheme_ResNet --resume_to conventional_scheme_ResNet --epochs_to_train 100
 '''
 os.system(cmd4)
+
+cmd5 ='''
+python main.py --lr 0.000099 --resume --resume_from conventional_scheme_ResNet --resume_to fine-tunning_ResNet --loss_function stochastic --normalize --epochs_to_train 5000
+'''
+os.system(cmd5)
 

@@ -22,7 +22,7 @@ record_score={y: max([test[x] for x in learning.lr[learning.lr==y].index]) for y
 string =''
 for i in sorted(list(uniLearning_score),reverse=True):
     string=_titles_(string,i, record_score[i])
-print (string)
+# print (string)
 
 ## 最优的点
 maxrecord_index = max(test, key=test.get)
