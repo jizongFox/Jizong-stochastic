@@ -6,6 +6,9 @@
 import os
 import sys
 import time
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.init as init
@@ -161,17 +164,19 @@ def load_resume(_from):
     _list = torch.load('./'+_from+'/record.t7')
     train_accuracy_list = _list['train']
     test_accuracy_list = _list['test']
+    learning_rate_list=_list['learning']
     keystoDelete = [x for x in train_accuracy_list.keys() if x > start_epoch]
     for k in keystoDelete:
         train_accuracy_list.pop(k)
         test_accuracy_list.pop(k)
-    return (net, best_acc,start_epoch),(train_accuracy_list,test_accuracy_list)
+        learning_rate_list.pop(k)
+    return (net, best_acc,start_epoch),(train_accuracy_list,test_accuracy_list,learning_rate_list)
 
 def _initilization_(args,use_cuda):
     if args.resume:
         storedNet, trainList=load_resume(_from=args.resume_from)
         (net, best_acc, start_epoch), (train_accuracy_list, test_accuracy_list) = storedNet, trainList
-        print('best_acc:',best_acc,'   ','start_epoch:',start_epoch)
+        print('best_train_acc:',train_accuracy_list[start_epoch-1],'   best_test_acc:',best_acc,'   ','start_epoch:',start_epoch)
     else:
         print('==> Building model..'+ args.netName)
         listofNet=['VGG','ResNet18','PreActResNet18','GoogLeNet','DenseNet121','ResNeXt29_2x64d','MobileNet','DPN92','ShuffleNetG2','SENet18']
@@ -183,6 +188,7 @@ def _initilization_(args,use_cuda):
             net = eval(network_name+'()')
         train_accuracy_list = {}
         test_accuracy_list = {}
+        learning_rate_list ={}
         best_acc = 0  # best test accuracy
         start_epoch = 0  # start from epoch 0 or last checkpoint epoch
     print('resume to '+args.resume_to)
@@ -191,12 +197,12 @@ def _initilization_(args,use_cuda):
         net.cuda()
         net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
         cudnn.benchmark = True
-    return (net, best_acc, start_epoch), (train_accuracy_list, test_accuracy_list)
+    return (net, best_acc, start_epoch), (train_accuracy_list, test_accuracy_list,learning_rate_list)
 
 
 def dump_acc_record(acc,net,use_cuda,epoch,args):
 
-    print('Saving..')
+    print('New benchmark, saving..')
     state = {
         'net': net.module if use_cuda else net,
         'acc': acc,
@@ -205,4 +211,36 @@ def dump_acc_record(acc,net,use_cuda,epoch,args):
     resume_to = args.resume_to
     if not os.path.isdir(resume_to):
         os.mkdir(resume_to)
-    torch.save(state, './'+resume_to+'/ckpt.t7')
+    try:
+        torch.save(state, './'+resume_to+'/ckpt.t7')
+    except Exception as e:
+        print(e)
+
+def dump_record(train_accuracy_list,test_accuracy_list,learning_rate_list,args):
+    print('saving accuracy history')
+    state ={'train':train_accuracy_list,
+        'test':test_accuracy_list,
+            'learning':learning_rate_list
+        }
+    if not os.path.isdir(args.resume_to):
+        os.mkdir(args.resume_to)
+    try:
+        torch.save(state, './'+args.resume_to+'/record.t7')
+    except Exception as e:
+        print(e)
+    train = train_accuracy_list
+    test = test_accuracy_list
+    epochs = [x for x in list(set(list(train.keys())))]
+    train_score = [train[x] for x in epochs]
+    test_score = [test[x] for x in epochs]
+
+    plt.figure()
+    plt.plot(epochs, train_score)
+    plt.plot(epochs, test_score)
+    plt.legend(['train', 'test'])
+    plt.show(block=False)
+    try:
+        plt.savefig('./'+args.resume_to+'/accuracyMap.png')
+    except Exception as e:
+        print(e)
+    plt.close()

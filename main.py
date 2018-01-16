@@ -4,7 +4,8 @@ import torch.nn as nn
 import torch.optim as optim,torch
 import os
 import argparse
-from utils import progress_bar, transform_dataset,_initilization_,dump_acc_record
+from utils import progress_bar, transform_dataset,_initilization_,dump_acc_record,dump_record
+from loss_Functions import  parser_loss_function
 from torch.autograd import Variable
 
 def train(epoch):
@@ -56,17 +57,6 @@ def test(epoch):
     acc = 100. * correct / total
     if acc > best_acc:
         dump_acc_record(acc, net, use_cuda, epoch, args)
-def dump_record(train_accuracy_list,test_accuracy_list,args):
-    print('saving record')
-    state ={'train':train_accuracy_list,
-        'test':test_accuracy_list
-        }
-    if not os.path.isdir(args.resume_to):
-        os.mkdir(args.resume_to)
-    try:
-        torch.save(state, './'+args.resume_to+'/record.t7')
-    except Exception as e:
-        print(e)
 
 if __name__=='__main__':
 
@@ -88,9 +78,9 @@ if __name__=='__main__':
 
     # Model
     storedNet, trainList = _initilization_(args,use_cuda)
-    (net, best_acc, start_epoch), (train_accuracy_list, test_accuracy_list) = storedNet, trainList
+    (net, best_acc, start_epoch), (train_accuracy_list, test_accuracy_list,learning_rate_list) = storedNet, trainList
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = parser_loss_function(args=args)
     optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 
     # Training
@@ -98,4 +88,4 @@ if __name__=='__main__':
         train(epoch)
         test(epoch)
         if epoch %3 ==0:
-            dump_record(train_accuracy_list,test_accuracy_list,args)
+            dump_record(train_accuracy_list,test_accuracy_list,learning_rate_list,args)
