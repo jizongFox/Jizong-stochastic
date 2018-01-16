@@ -9,7 +9,7 @@ import time
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-import torch
+import torch,numpy as np,pandas as pd
 import torch.nn as nn
 import torch.nn.init as init
 from torchvision import transforms
@@ -236,15 +236,56 @@ def dump_record(train_accuracy_list,test_accuracy_list,learning_rate_list,args):
         print(e)
     train = train_accuracy_list
     test = test_accuracy_list
+    learning =learning_rate_list
+    # epochs = [x for x in list(set(list(train.keys())))]
+    # train_score = [train[x] for x in epochs]
+    # test_score = [test[x] for x in epochs]
+
+    # plt.figure()
+    # plt.plot(epochs, train_score)
+    # plt.plot(epochs, test_score)
+    # plt.legend(['train', 'test'])
+    # plt.show(block=False)
+    # try:
+    #     plt.savefig('./'+args.resume_to+'/accuracyMap.png')
+    # except Exception as e:
+    #     print(e)
+    # plt.close()
+    def _titles_(string, lr, acc):
+        string = string + 'lr: ' + str(lr) + ', acc: ' + str(acc) + '\n'
+        return string
+
     epochs = [x for x in list(set(list(train.keys())))]
     train_score = [train[x] for x in epochs]
     test_score = [test[x] for x in epochs]
+    learning_score = [learning[x] for x in epochs]
+    uniLearning_score = np.unique(learning_score)
+    learning = pd.DataFrame(learning, index=[0]).T
+    learning.columns = ['lr']
+    record_score = {y: max([test[x] for x in learning.lr[learning.lr == y].index]) for y in uniLearning_score}
+    string = ''
+    for i in sorted(list(uniLearning_score), reverse=True):
+        string = _titles_(string, i, record_score[i])
+    # print(string)
 
-    plt.figure()
-    plt.plot(epochs, train_score)
-    plt.plot(epochs, test_score)
-    plt.legend(['train', 'test'])
-    plt.show(block=False)
+    ## 最优的点
+    maxrecord_index = max(test, key=test.get)
+    maxrecord = test[maxrecord_index]
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    ax1.plot(epochs, train_score)
+    ax1.set_ylabel('Accuracy %')
+    ax1.plot(epochs, test_score)
+    ax1.legend(['train', 'test'], loc='lower left', bbox_to_anchor=(0.15, 0.75), ncol=3, fancybox=True, shadow=True)
+    ax1.axvline(maxrecord_index, alpha=0.2, drawstyle='steps-mid', color='r', linewidth=1)
+    ax1.axhline(maxrecord, alpha=0.2, drawstyle='steps-mid', color='r', linewidth=1)
+    ax2 = ax1.twinx()  # this is the important function
+    ax2.plot(epochs, np.log10(learning_score), 'g')
+    ax2.legend(['learning_rate:\n' + string], loc='lower right')
+    ax2.set_ylabel('log(Learning rate)')
+    ax2.set_ylim([-6, 3])
+    plt.show()
     try:
         plt.savefig('./'+args.resume_to+'/accuracyMap.png')
     except Exception as e:
