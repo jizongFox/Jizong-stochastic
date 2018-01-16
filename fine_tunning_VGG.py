@@ -18,7 +18,7 @@ python main.py --lr 0.001 --resume --resume_from conventional_scheme_VGG --resum
 os.system(cmd3)
 
 cmd4 ='''
-python main.py -lr 0.0001 --resume --resume_from conventional_scheme_VGG --resume_to fine-tunning_VGG --loss_function stochastic --normalize --epochs_to_train 5000
+python main.py --lr 0.0001 --resume --resume_from conventional_scheme_VGG --resume_to fine-tunning_VGG --loss_function stochastic --normalize --epochs_to_train 5000
 '''
 os.system(cmd4)
 
