@@ -6,10 +6,11 @@
 import os
 import sys
 import time
+from matplotlib.colors  import ListedColormap
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-import torch,numpy as np,pandas as pd
+import torch,numpy as np,pandas as pd,matplotlib.pyplot as plt
 import torch.nn as nn
 import torch.nn.init as init
 from torchvision import transforms
@@ -161,24 +162,21 @@ def load_resume(_from):
     _list = torch.load('./'+_from+'/record.t7')
     train_accuracy_list = _list['train']
     test_accuracy_list = _list['test']
-    try:
-        learning_rate_list=_list['learning']
-    except:
-        learning_rate_list={}
+    learning_rate_list=_list['learning']
+    loss_function_list=_list['loss']
     keystoDelete = [x for x in train_accuracy_list.keys() if x > start_epoch]
     for k in keystoDelete:
         train_accuracy_list.pop(k)
         test_accuracy_list.pop(k)
-        try:
-            learning_rate_list.pop(k)
-        except:
-            pass
-    return (net, best_acc,start_epoch),(train_accuracy_list,test_accuracy_list,learning_rate_list)
+        learning_rate_list.pop(k)
+        loss_function_list.pop(k)
+
+    return (net, best_acc,start_epoch),(train_accuracy_list,test_accuracy_list,learning_rate_list,loss_function_list)
 
 def _initilization_(args,use_cuda):
     if args.resume:
         storedNet, trainList=load_resume(_from=args.resume_from)
-        (net, best_acc, start_epoch), (train_accuracy_list, test_accuracy_list,learning_rate_list) = storedNet, trainList
+        (net, best_acc, start_epoch), (train_accuracy_list, test_accuracy_list,learning_rate_list,loss_function_list) = storedNet, trainList
         print('best_train_acc:',train_accuracy_list[start_epoch-1],'   best_test_acc:',best_acc,'   ','start_epoch:',start_epoch)
     else:
         print('==> Building model..'+ args.netName)
@@ -192,6 +190,7 @@ def _initilization_(args,use_cuda):
         train_accuracy_list = {}
         test_accuracy_list = {}
         learning_rate_list ={}
+        loss_function_list ={}
         best_acc = 0  # best test accuracy
         start_epoch = 0  # start from epoch 0 or last checkpoint epoch
     print('resume to '+args.resume_to)
@@ -200,7 +199,7 @@ def _initilization_(args,use_cuda):
         net.cuda()
         net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
         cudnn.benchmark = True
-    return (net, best_acc, start_epoch), (train_accuracy_list, test_accuracy_list,learning_rate_list)
+    return (net, best_acc, start_epoch), (train_accuracy_list, test_accuracy_list,learning_rate_list,loss_function_list)
 
 
 def dump_acc_record(acc,net,use_cuda,epoch,args):
@@ -219,11 +218,12 @@ def dump_acc_record(acc,net,use_cuda,epoch,args):
     except Exception as e:
         print(e)
 
-def dump_record(train_accuracy_list,test_accuracy_list,learning_rate_list,args):
+def dump_record(train_accuracy_list,test_accuracy_list,learning_rate_list,loss_function_list,args):
     # print('saving accuracy history')
     state ={'train':train_accuracy_list,
         'test':test_accuracy_list,
-            'learning':learning_rate_list
+            'learning':learning_rate_list,
+            'loss':loss_function_list
         }
     if not os.path.isdir(args.resume_to):
         os.mkdir(args.resume_to)
@@ -234,20 +234,7 @@ def dump_record(train_accuracy_list,test_accuracy_list,learning_rate_list,args):
     train = train_accuracy_list
     test = test_accuracy_list
     learning =learning_rate_list
-    # epochs = [x for x in list(set(list(train.keys())))]
-    # train_score = [train[x] for x in epochs]
-    # test_score = [test[x] for x in epochs]
-
-    # plt.figure()
-    # plt.plot(epochs, train_score)
-    # plt.plot(epochs, test_score)
-    # plt.legend(['train', 'test'])
-    # plt.show(block=False)
-    # try:
-    #     plt.savefig('./'+args.resume_to+'/accuracyMap.png')
-    # except Exception as e:
-    #     print(e)
-    # plt.close()
+    loss = loss_function_list
     def _titles_(string, lr, acc):
         string = string + 'lr: ' + str(lr) + ', acc: ' + str(acc) + '\n'
         return string
@@ -261,15 +248,20 @@ def dump_record(train_accuracy_list,test_accuracy_list,learning_rate_list,args):
     learning.columns = ['lr']
     record_score = {y: max([test[x] for x in learning.lr[learning.lr == y].index]) for y in uniLearning_score}
     string = ''
+
     for i in sorted(list(uniLearning_score), reverse=True):
         string = _titles_(string, i, record_score[i])
-    # print(string)
+
+    loss = pd.DataFrame(loss).T
+    turnPoint = list(loss[loss.duplicated() == False].index)
+
 
     ## 最优的点
     maxrecord_index = max(test, key=test.get)
     maxrecord = test[maxrecord_index]
 
     fig = plt.figure()
+
     ax1 = fig.add_subplot(111)
     ax1.plot(epochs, train_score)
     ax1.set_ylabel('Accuracy %')
@@ -282,6 +274,17 @@ def dump_record(train_accuracy_list,test_accuracy_list,learning_rate_list,args):
     ax2.legend(['learning_rate:\n' + string], loc='lower right')
     ax2.set_ylabel('log(Learning rate)')
     ax2.set_ylim([-6, 3])
+    ## different regions:
+    markers = ('s','x','o','^')
+    colors = ('red','blue','lightgreen','gray')
+    if len(turnPoint)==1:
+        pass
+    else:
+        for i in range(len(turnPoint)-1):
+            plt.fill_between(epochs,-100,100,where=(epochs>=turnPoint[i])&(epochs<=turnPoint[i+1]),alpha=0.1,facecolor = colors[i] )
+        plt.fill_between(epochs,-100,100,where=(epochs>=turnPoint[i+1]),alpha=0.1,facecolor = colors[i+1] )
+
+    ##
     plt.show()
     try:
         plt.savefig('./'+args.resume_to+'/accuracyMap.png')

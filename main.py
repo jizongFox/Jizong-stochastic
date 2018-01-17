@@ -33,6 +33,11 @@ def train(epoch):
                      % (train_loss / (batch_idx + 1), 100. * correct / total, correct, total))
     train_accuracy_list[epoch] = 100. * correct / total
     learning_rate_list[epoch] = args.lr
+    loss_function_list[epoch] = {'name':args.loss_function,
+                                 'CR':args.correct_reward,
+                                 'IR':args.incorrect_penalty,
+                                 'LR':args.lr
+                                 }
 def test(epoch):
     global best_acc
     net.eval()
@@ -58,7 +63,8 @@ def test(epoch):
     acc = 100. * correct / total
     if acc > best_acc:
         dump_acc_record(acc, net, use_cuda, epoch, args)
-        dump_record(train_accuracy_list, test_accuracy_list, learning_rate_list, args)
+        dump_record(train_accuracy_list, test_accuracy_list, learning_rate_list, loss_function_list,args)
+        best_acc=acc
 
 if __name__=='__main__':
 
@@ -80,7 +86,7 @@ if __name__=='__main__':
 
     # Model
     storedNet, trainList = _initilization_(args,use_cuda)
-    (net, best_acc, start_epoch), (train_accuracy_list, test_accuracy_list,learning_rate_list) = storedNet, trainList
+    (net, best_acc, start_epoch), (train_accuracy_list, test_accuracy_list,learning_rate_list,loss_function_list) = storedNet, trainList
 
     criterion = parser_loss_function(args=args)
     optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
@@ -89,4 +95,4 @@ if __name__=='__main__':
     for epoch in range(start_epoch, start_epoch+args.epochs_to_train):
         train(epoch)
         test(epoch)
-        dump_record(train_accuracy_list,test_accuracy_list,learning_rate_list,args)
+        dump_record(train_accuracy_list,test_accuracy_list,learning_rate_list,loss_function_list,args)
